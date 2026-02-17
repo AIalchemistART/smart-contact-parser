@@ -189,74 +189,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Try gpt-5.1-codex-mini (Responses API) first, fall back to gpt-4o (Chat Completions)
-    let content: string | null = null;
-    let usageData = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
-    let modelUsed = "gpt-5.1-codex-mini";
+    // Build Chat Completions content parts
+    type ChatPart =
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "high" } };
 
-    try {
-      const response = await openai.responses.create({
-        model: "gpt-5.1-codex-mini",
-        instructions: systemPrompt,
-        input: [{ role: "user" as const, content: inputParts }],
-        max_output_tokens: 40000,
-      });
-
-      console.log("[parse] codex-mini status:", response.status, "output_text:", response.output_text?.length ?? 0);
-
-      if (response.status === "completed" && response.output_text) {
-        content = response.output_text;
-      } else if (response.status !== "completed") {
-        console.warn("[parse] codex-mini incomplete, falling back to gpt-4o");
-        throw new Error("incomplete_response");
+    const chatParts: ChatPart[] = inputParts.map((p) => {
+      if (p.type === "input_text") {
+        return { type: "text" as const, text: p.text };
       }
-
-      if (response.usage) {
-        usageData = {
-          input_tokens: response.usage.input_tokens || 0,
-          output_tokens: response.usage.output_tokens || 0,
-          total_tokens: response.usage.total_tokens || 0,
-        };
-      }
-    } catch (primaryError: unknown) {
-      // Fall back to gpt-4o via Chat Completions API
-      console.log("[parse] Falling back to gpt-4o. Reason:", primaryError instanceof Error ? primaryError.message : "unknown");
-      modelUsed = "gpt-4o";
-
-      // Convert input parts to Chat Completions format
-      type ChatPart =
-        | { type: "text"; text: string }
-        | { type: "image_url"; image_url: { url: string; detail: "high" } };
-
-      const chatParts: ChatPart[] = inputParts.map((p) => {
-        if (p.type === "input_text") {
-          return { type: "text" as const, text: p.text };
-        }
-        return {
-          type: "image_url" as const,
-          image_url: { url: p.image_url, detail: "high" as const },
-        };
-      });
-
-      const fallbackResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: chatParts },
-        ],
-        max_tokens: 8000,
-        temperature: 0.2,
-      });
-
-      content = fallbackResponse.choices[0]?.message?.content || null;
-      usageData = {
-        input_tokens: fallbackResponse.usage?.prompt_tokens || 0,
-        output_tokens: fallbackResponse.usage?.completion_tokens || 0,
-        total_tokens: fallbackResponse.usage?.total_tokens || 0,
+      return {
+        type: "image_url" as const,
+        image_url: { url: p.image_url, detail: "high" as const },
       };
-    }
+    });
 
-    console.log("[parse] Model used:", modelUsed, "Content length:", content?.length ?? 0);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: chatParts },
+      ],
+      max_tokens: 8000,
+      temperature: 0.2,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    const usageData = {
+      input_tokens: response.usage?.prompt_tokens || 0,
+      output_tokens: response.usage?.completion_tokens || 0,
+      total_tokens: response.usage?.total_tokens || 0,
+    };
+
+    console.log("[parse] Model: gpt-4o, Content length:", content?.length ?? 0);
 
     if (!content) {
       return NextResponse.json(
@@ -320,7 +285,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       contacts,
-      modelUsed,
+      modelUsed: "gpt-4o",
       usage: {
         promptTokens: usageData.input_tokens,
         completionTokens: usageData.output_tokens,
