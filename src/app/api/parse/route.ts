@@ -151,8 +151,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("[parse] API key validation passed, creating OpenAI client");
-    const openai = new OpenAI({ apiKey });
+    console.log("[parse] API key validation passed");
 
     const hasText = text && typeof text === "string" && text.trim().length > 0;
     const hasImages = Array.isArray(images) && images.length > 0;
@@ -215,26 +214,46 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    console.log("[parse] Calling OpenAI gpt-4o via chat.completions...");
+    console.log("[parse] Calling OpenAI gpt-4o via direct fetch...");
     console.log("[parse] System prompt length:", systemPrompt.length);
     console.log("[parse] Chat parts count:", chatParts.length);
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: chatParts },
-      ],
-      max_tokens: 8000,
-      temperature: 0.2,
+    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: chatParts },
+        ],
+        max_tokens: 8000,
+        temperature: 0.2,
+      }),
     });
 
+    console.log("[parse] OpenAI response status:", openaiRes.status);
+    console.log("[parse] OpenAI response headers:", Object.fromEntries(openaiRes.headers.entries()));
+
+    if (!openaiRes.ok) {
+      const errorBody = await openaiRes.text();
+      console.error("[parse] OpenAI error body:", errorBody);
+      return NextResponse.json(
+        { error: `OpenAI API error ${openaiRes.status}: ${errorBody || "(no body)"}` },
+        { status: 500 }
+      );
+    }
+
+    const responseData = await openaiRes.json();
     console.log("[parse] OpenAI response received successfully");
-    const content = response.choices[0]?.message?.content;
+    const content = responseData.choices?.[0]?.message?.content;
     const usageData = {
-      input_tokens: response.usage?.prompt_tokens || 0,
-      output_tokens: response.usage?.completion_tokens || 0,
-      total_tokens: response.usage?.total_tokens || 0,
+      input_tokens: responseData.usage?.prompt_tokens || 0,
+      output_tokens: responseData.usage?.completion_tokens || 0,
+      total_tokens: responseData.usage?.total_tokens || 0,
     };
 
     console.log("[parse] Model: gpt-4o, Content length:", content?.length ?? 0);
