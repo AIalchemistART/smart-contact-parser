@@ -134,13 +134,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { text, images, userInstructions, preferences, apiKey, batchMode } = body;
 
+    console.log("[parse] === REQUEST START ===");
+    console.log("[parse] apiKey present:", !!apiKey);
+    console.log("[parse] apiKey type:", typeof apiKey);
+    console.log("[parse] apiKey prefix:", typeof apiKey === "string" ? apiKey.slice(0, 7) + "..." + apiKey.slice(-4) : "N/A");
+    console.log("[parse] apiKey length:", typeof apiKey === "string" ? apiKey.length : 0);
+    console.log("[parse] batchMode:", batchMode);
+    console.log("[parse] hasText:", !!(text && typeof text === "string" && text.trim().length > 0));
+    console.log("[parse] hasImages:", Array.isArray(images) && images.length > 0);
+
     if (!apiKey || typeof apiKey !== "string" || !apiKey.startsWith("sk-")) {
+      console.error("[parse] API key validation FAILED");
       return NextResponse.json(
         { error: "Valid OpenAI API key required. Enter your key in Settings." },
         { status: 400 }
       );
     }
 
+    console.log("[parse] API key validation passed, creating OpenAI client");
     const openai = new OpenAI({ apiKey });
 
     const hasText = text && typeof text === "string" && text.trim().length > 0;
@@ -204,6 +215,10 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    console.log("[parse] Calling OpenAI gpt-4o via chat.completions...");
+    console.log("[parse] System prompt length:", systemPrompt.length);
+    console.log("[parse] Chat parts count:", chatParts.length);
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -214,6 +229,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
 
+    console.log("[parse] OpenAI response received successfully");
     const content = response.choices[0]?.message?.content;
     const usageData = {
       input_tokens: response.usage?.prompt_tokens || 0,
@@ -294,7 +310,18 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("AI parse error:", message);
+    console.error("[parse] === ERROR ===");
+    console.error("[parse] Error message:", message);
+    console.error("[parse] Error type:", error?.constructor?.name);
+    if (error && typeof error === "object") {
+      const e = error as Record<string, unknown>;
+      console.error("[parse] Error status:", e.status);
+      console.error("[parse] Error code:", e.code);
+      console.error("[parse] Error type prop:", e.type);
+      if (e.error && typeof e.error === "object") {
+        console.error("[parse] Inner error:", JSON.stringify(e.error));
+      }
+    }
     return NextResponse.json(
       { error: `AI parsing failed: ${message}` },
       { status: 500 }
