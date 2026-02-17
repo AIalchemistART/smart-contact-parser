@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { ParsedContact, Preference } from "@/lib/types";
 import { getApiKey } from "@/lib/storage";
+import { parseContactsClient } from "@/lib/parse-client";
 import { ParseInput } from "@/components/parse-input";
 import { ResultsPanel } from "@/components/results-panel";
 import { SettingsPanel } from "@/components/settings-panel";
@@ -46,35 +47,24 @@ export default function ToolPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: input.text || undefined,
-          images: input.images.length > 0 ? input.images : undefined,
-          userInstructions: input.userInstructions || undefined,
-          preferences,
-          apiKey,
-          batchMode: input.batchMode,
-        }),
+      const result = await parseContactsClient({
+        text: input.text || undefined,
+        images: input.images.length > 0 ? input.images : undefined,
+        userInstructions: input.userInstructions || undefined,
+        preferences,
+        apiKey,
+        batchMode: input.batchMode,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Parsing failed");
-        return;
-      }
-
-      if (data.contacts && data.contacts.length > 0) {
-        setContacts((prev) => [...prev, ...data.contacts]);
-        setTotalTokens((prev) => prev + (data.usage?.totalTokens || 0));
+      if (result.contacts.length > 0) {
+        setContacts((prev) => [...prev, ...result.contacts]);
+        setTotalTokens((prev) => prev + (result.usage?.totalTokens || 0));
         lastInputRef.current = input;
       } else {
         setError("No contacts found in the input.");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(err instanceof Error ? err.message : "Parsing failed");
     } finally {
       setParsing(false);
     }
@@ -95,35 +85,24 @@ export default function ToolPage() {
         company: c.company,
       }));
 
-      const res = await fetch("/api/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: input.text || undefined,
-          images: input.images.length > 0 ? input.images : undefined,
-          userInstructions: input.userInstructions || undefined,
-          preferences,
-          apiKey,
-          batchMode: true,
-          alreadyFound,
-        }),
+      const result = await parseContactsClient({
+        text: input.text || undefined,
+        images: input.images.length > 0 ? input.images : undefined,
+        userInstructions: input.userInstructions || undefined,
+        preferences,
+        apiKey,
+        batchMode: true,
+        alreadyFound,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Re-scan failed");
-        return;
-      }
-
-      if (data.contacts && data.contacts.length > 0) {
-        setContacts((prev) => [...prev, ...data.contacts]);
-        setTotalTokens((prev) => prev + (data.usage?.totalTokens || 0));
+      if (result.contacts.length > 0) {
+        setContacts((prev) => [...prev, ...result.contacts]);
+        setTotalTokens((prev) => prev + (result.usage?.totalTokens || 0));
       } else {
         setError("No additional contacts found. All contacts may have been captured.");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Network error");
+      setError(err instanceof Error ? err.message : "Re-scan failed");
     } finally {
       setRescanning(false);
     }
