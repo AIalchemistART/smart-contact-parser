@@ -189,49 +189,76 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Use Responses API (required for gpt-5.1-codex-mini)
-    const response = await openai.responses.create({
-      model: "gpt-5.1-codex-mini",
-      instructions: systemPrompt,
-      input: [{ role: "user" as const, content: inputParts }],
-      max_output_tokens: 40000,
-    });
+    // Try gpt-5.1-codex-mini (Responses API) first, fall back to gpt-4o (Chat Completions)
+    let content: string | null = null;
+    let usageData = { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
+    let modelUsed = "gpt-5.1-codex-mini";
 
-    console.log("[parse] Response status:", response.status);
-    console.log("[parse] output_text length:", response.output_text?.length ?? 0);
-    console.log("[parse] output items:", response.output?.length ?? 0);
-    console.log("[parse] usage:", JSON.stringify(response.usage));
+    try {
+      const response = await openai.responses.create({
+        model: "gpt-5.1-codex-mini",
+        instructions: systemPrompt,
+        input: [{ role: "user" as const, content: inputParts }],
+        max_output_tokens: 40000,
+      });
 
-    // Check for incomplete response
-    if (response.status !== "completed") {
-      console.error("[parse] Non-completed status:", response.status);
-      console.error("[parse] Full output:", JSON.stringify(response.output, null, 2).slice(0, 2000));
-      return NextResponse.json(
-        { error: `AI response status: ${response.status}. The model may need a shorter input or different parameters.` },
-        { status: 500 }
-      );
-    }
+      console.log("[parse] codex-mini status:", response.status, "output_text:", response.output_text?.length ?? 0);
 
-    // Extract text from Responses API output
-    let content = response.output_text;
-
-    // Fallback: manually extract text from output items if output_text is empty
-    if (!content && response.output) {
-      const textParts: string[] = [];
-      for (const item of response.output) {
-        if (item.type === "message" && Array.isArray(item.content)) {
-          for (const part of item.content) {
-            if (part.type === "output_text" && part.text) {
-              textParts.push(part.text);
-            }
-          }
-        }
+      if (response.status === "completed" && response.output_text) {
+        content = response.output_text;
+      } else if (response.status !== "completed") {
+        console.warn("[parse] codex-mini incomplete, falling back to gpt-4o");
+        throw new Error("incomplete_response");
       }
-      content = textParts.join("");
+
+      if (response.usage) {
+        usageData = {
+          input_tokens: response.usage.input_tokens || 0,
+          output_tokens: response.usage.output_tokens || 0,
+          total_tokens: response.usage.total_tokens || 0,
+        };
+      }
+    } catch (primaryError: unknown) {
+      // Fall back to gpt-4o via Chat Completions API
+      console.log("[parse] Falling back to gpt-4o. Reason:", primaryError instanceof Error ? primaryError.message : "unknown");
+      modelUsed = "gpt-4o";
+
+      // Convert input parts to Chat Completions format
+      type ChatPart =
+        | { type: "text"; text: string }
+        | { type: "image_url"; image_url: { url: string; detail: "high" } };
+
+      const chatParts: ChatPart[] = inputParts.map((p) => {
+        if (p.type === "input_text") {
+          return { type: "text" as const, text: p.text };
+        }
+        return {
+          type: "image_url" as const,
+          image_url: { url: p.image_url, detail: "high" as const },
+        };
+      });
+
+      const fallbackResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: chatParts },
+        ],
+        max_tokens: 8000,
+        temperature: 0.2,
+      });
+
+      content = fallbackResponse.choices[0]?.message?.content || null;
+      usageData = {
+        input_tokens: fallbackResponse.usage?.prompt_tokens || 0,
+        output_tokens: fallbackResponse.usage?.completion_tokens || 0,
+        total_tokens: fallbackResponse.usage?.total_tokens || 0,
+      };
     }
+
+    console.log("[parse] Model used:", modelUsed, "Content length:", content?.length ?? 0);
 
     if (!content) {
-      console.error("[parse] Empty content. Full output:", JSON.stringify(response.output, null, 2).slice(0, 2000));
       return NextResponse.json(
         { error: "AI returned an empty response. Please try again." },
         { status: 500 }
@@ -293,10 +320,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       contacts,
+      modelUsed,
       usage: {
-        promptTokens: response.usage?.input_tokens || 0,
-        completionTokens: response.usage?.output_tokens || 0,
-        totalTokens: response.usage?.total_tokens || 0,
+        promptTokens: usageData.input_tokens,
+        completionTokens: usageData.output_tokens,
+        totalTokens: usageData.total_tokens,
       },
     });
   } catch (error: unknown) {
