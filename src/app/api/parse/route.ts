@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    console.log("[parse] Calling OpenAI gpt-4o via direct fetch...");
+    console.log("[parse] Calling OpenAI gpt-4o-mini via direct fetch...");
     console.log("[parse] System prompt length:", systemPrompt.length);
     console.log("[parse] Chat parts count:", chatParts.length);
 
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: chatParts },
@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
       total_tokens: responseData.usage?.total_tokens || 0,
     };
 
-    console.log("[parse] Model: gpt-4o, Content length:", content?.length ?? 0);
+    console.log("[parse] Model: gpt-4o-mini, Content length:", content?.length ?? 0);
 
     if (!content) {
       return NextResponse.json(
@@ -320,7 +320,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       contacts,
-      modelUsed: "gpt-4o",
+      modelUsed: "gpt-4o-mini",
       usage: {
         promptTokens: usageData.input_tokens,
         completionTokens: usageData.output_tokens,
