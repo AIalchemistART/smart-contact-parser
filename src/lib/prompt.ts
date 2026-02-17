@@ -101,11 +101,21 @@ The "suggestedTags" field is an array of 3-6 relevant tag strings inferred from 
 
 The "detectedSource" field describes where the input likely came from. Use one of: "email_signature", "business_card", "linkedin", "handwritten_note", "crm_export", "website", "conversation_notes", "word_document", "other". Leave empty if unclear.
 
-The "notes" field should be an array of objects, each with "content" (string) and "date" (string, ISO format YYYY-MM-DD or empty).
-- If a date is mentioned near a note, use that date.
-- If no date, use empty string.
-- Group related text under the same note.
-- IMPORTANT: When exporting to GoHighLevel, all notes will be aggregated into a SINGLE note cell (GHL only supports one note per contact import). So capture all relevant context -- meeting notes, relationship info, follow-up items, etc. -- as separate note entries and they will be combined on export.
+NOTES EXTRACTION — THIS IS CRITICAL. Notes are the most valuable part of the import for the user. Be EXHAUSTIVE:
+
+The "notes" field is an array of objects: { "content": string, "date": string (YYYY-MM-DD or "") }.
+
+Rules for note extraction:
+- CAPTURE EVERYTHING: Every piece of contextual text that isn't a structured field (name, email, phone, etc.) should become a note. Meeting details, conversation summaries, relationship context, follow-up items, pricing discussions, personal details, preferences, objections, timelines — ALL of it.
+- ONE NOTE PER EVENT/DATE: Create a separate note entry for each distinct interaction, meeting, conversation, or dated entry. Do NOT merge multiple dates into one note.
+- PRESERVE ORIGINAL WORDING: Keep the original language and detail from the source text. Do not summarize or truncate. If the source says "Met several nice people at NIA meeting. Discussed being the only gutter company in the group. Likes the concept." — include ALL of that, not a shortened version.
+- INCLUDE ACTION ITEMS: If follow-ups, scheduled events, or to-dos are mentioned ("scheduled for podcast on January 30th", "setting up meeting", "will call back"), capture them verbatim.
+- INCLUDE RELATIONSHIP CONTEXT: Who introduced whom, which events they attended together, what groups they belong to, how they heard about the opportunity.
+- INCLUDE BUSINESS DETAILS: Pricing discussed, services offered, objections raised, competitor mentions, membership details, billing arrangements.
+- INCLUDE PERSONAL DETAILS: Interests, preferences, family connections between contacts, personality notes ("passionate about maintenance plans").
+- DATE ASSOCIATION: If a date appears near or above a block of text, associate that date with the note. Use YYYY-MM-DD format. If no date is evident, use empty string.
+- WHEN IN DOUBT, INCLUDE IT: It is far better to capture too much in notes than too little. The user needs this context for their CRM workflow.
+- IMPORTANT: When exporting to GoHighLevel, all notes will be aggregated into a SINGLE note cell (GHL only supports one note per contact import). So capture all relevant context as separate note entries and they will be combined on export.
 
 IMPORTANT for email signatures: If the input looks like an email signature, treat it as structured and extract all fields with high confidence.
 

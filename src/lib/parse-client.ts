@@ -30,12 +30,9 @@ export async function parseContactsClient(options: ParseOptions): Promise<ParseR
   const activePrefs = preferences.filter((p) => p.active !== false);
   const systemPrompt = buildSystemPrompt(activePrefs, batchMode, alreadyFound);
 
-  // Build user content parts (Chat Completions format)
-  type ContentPart =
-    | { type: "text"; text: string }
-    | { type: "image_url"; image_url: { url: string; detail: "high" } };
-
-  const contentParts: ContentPart[] = [];
+  // Build input parts for Responses API
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inputParts: any[] = [];
 
   let userText = hasText ? text!.trim() : "";
   if (userInstructions && userInstructions.trim()) {
@@ -43,52 +40,110 @@ export async function parseContactsClient(options: ParseOptions): Promise<ParseR
   }
 
   if (userText) {
-    contentParts.push({ type: "text", text: userText });
+    inputParts.push({ type: "input_text", text: userText });
   } else {
-    contentParts.push({ type: "text", text: "Extract contact information from the attached image(s)." });
+    inputParts.push({ type: "input_text", text: "Extract contact information from the attached image(s)." });
   }
 
   if (hasImages) {
     for (const img of images!) {
-      contentParts.push({
-        type: "image_url",
-        image_url: { url: `data:${img.mimeType};base64,${img.data}`, detail: "high" },
+      inputParts.push({
+        type: "input_image",
+        image_url: `data:${img.mimeType};base64,${img.data}`,
+        detail: "high",
       });
     }
   }
 
-  // Call OpenAI directly from the browser
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: contentParts },
-      ],
-      max_tokens: 8000,
-      temperature: 0.2,
-    }),
-  });
+  // Try gpt-5.1-codex-mini via Responses API, fall back to gpt-4o via Chat Completions
+  let content: string | null = null;
+  let modelUsed = "gpt-5.1-codex-mini";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let usageRaw: any = null;
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    let errorMsg = `OpenAI API error ${response.status}`;
-    try {
-      const parsed = JSON.parse(errorBody);
-      errorMsg = parsed.error?.message || errorMsg;
-    } catch {
-      if (errorBody) errorMsg += `: ${errorBody.slice(0, 200)}`;
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-5.1-codex-mini",
+        instructions: systemPrompt,
+        input: [{ role: "user", content: inputParts }],
+        max_output_tokens: 40000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.warn("[parse] codex-mini failed:", response.status, errorBody?.slice(0, 200));
+      throw new Error(`codex-mini ${response.status}`);
     }
-    throw new Error(errorMsg);
-  }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+    const data = await response.json();
+    usageRaw = data.usage;
+
+    if (data.status === "completed" && data.output_text) {
+      content = data.output_text;
+    } else {
+      console.warn("[parse] codex-mini incomplete status:", data.status);
+      throw new Error("incomplete_response");
+    }
+  } catch (primaryErr) {
+    // Fallback to gpt-4o via Chat Completions API
+    console.log("[parse] Falling back to gpt-4o:", primaryErr instanceof Error ? primaryErr.message : "unknown");
+    modelUsed = "gpt-4o";
+
+    // Convert input parts to Chat Completions format
+    type ChatPart =
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "high" } };
+
+    const chatParts: ChatPart[] = inputParts.map((p) => {
+      if (p.type === "input_text") {
+        return { type: "text" as const, text: p.text };
+      }
+      return {
+        type: "image_url" as const,
+        image_url: { url: p.image_url, detail: "high" as const },
+      };
+    });
+
+    const fallbackRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: chatParts },
+        ],
+        max_tokens: 16000,
+        temperature: 0.2,
+      }),
+    });
+
+    if (!fallbackRes.ok) {
+      const errorBody = await fallbackRes.text();
+      let errorMsg = `OpenAI API error ${fallbackRes.status}`;
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorMsg = parsed.error?.message || errorMsg;
+      } catch {
+        if (errorBody) errorMsg += `: ${errorBody.slice(0, 200)}`;
+      }
+      throw new Error(errorMsg);
+    }
+
+    const fallbackData = await fallbackRes.json();
+    content = fallbackData.choices?.[0]?.message?.content || null;
+    usageRaw = fallbackData.usage;
+  }
 
   if (!content) {
     throw new Error("AI returned an empty response. Please try again.");
@@ -141,11 +196,11 @@ export async function parseContactsClient(options: ParseOptions): Promise<ParseR
 
   return {
     contacts,
-    modelUsed: "gpt-4o",
+    modelUsed,
     usage: {
-      promptTokens: data.usage?.prompt_tokens || 0,
-      completionTokens: data.usage?.completion_tokens || 0,
-      totalTokens: data.usage?.total_tokens || 0,
+      promptTokens: usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0,
+      completionTokens: usageRaw?.output_tokens || usageRaw?.completion_tokens || 0,
+      totalTokens: usageRaw?.total_tokens || 0,
     },
   };
 }
