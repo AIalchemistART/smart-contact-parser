@@ -140,3 +140,64 @@ Return ONLY valid JSON. No markdown, no explanation, no wrapping.`;
 
   return prompt;
 }
+
+interface ExistingContactSummary {
+  firstName: string;
+  lastName: string;
+  company: string;
+  notes: { content: string; date: string }[];
+}
+
+export function buildNotesEnrichmentPrompt(
+  existingContacts: ExistingContactSummary[]
+): string {
+  let prompt = `You are a notes enrichment specialist. You have already extracted contacts from a document, but some notes may have been missed, truncated, or summarized too aggressively.
+
+Your job: Re-read the ORIGINAL SOURCE TEXT below and find ANY notes, context, details, meeting info, conversation history, action items, follow-ups, relationship details, pricing discussions, personal details, or other contextual information that is MISSING from the current notes for each contact.
+
+RULES:
+- Compare each contact's EXISTING notes (listed below) against the source text.
+- Find ANYTHING that was missed, shortened, or left out.
+- Preserve original wording from the source — do NOT paraphrase or summarize.
+- Each note entry should have: { "content": "...", "date": "YYYY-MM-DD or empty string" }
+- If a contact's notes are already complete, return an empty array for that contact.
+- Look for: meeting details, conversation topics, follow-up items, scheduled events, pricing/cost discussions, personal preferences, relationship connections between contacts, group memberships, attendance records, objections, interests, and ANY other contextual detail.
+- IMPORTANT: Also look for notes that exist but were truncated or shortened. If the source has more detail than what's in the existing notes, return the FULL expanded version as a new note.
+
+EXISTING CONTACTS AND THEIR CURRENT NOTES:
+`;
+
+  for (let i = 0; i < existingContacts.length; i++) {
+    const c = existingContacts[i];
+    const name = [c.firstName, c.lastName].filter(Boolean).join(" ") || `Contact #${i + 1}`;
+    prompt += `\n--- ${name}${c.company ? ` (${c.company})` : ""} ---\n`;
+    if (c.notes.length === 0) {
+      prompt += `  [NO NOTES YET — extract ALL relevant notes for this person]\n`;
+    } else {
+      for (const note of c.notes) {
+        prompt += `  ${note.date ? `[${note.date}] ` : ""}${note.content}\n`;
+      }
+    }
+  }
+
+  prompt += `
+Return a JSON object mapping each contact name to their NEWLY FOUND notes (notes that are NOT already listed above):
+
+{
+  "enrichedNotes": [
+    {
+      "contactIndex": 0,
+      "newNotes": [ { "content": "...", "date": "..." }, ... ]
+    },
+    ...
+  ]
+}
+
+- "contactIndex" corresponds to the order of contacts listed above (0-indexed).
+- "newNotes" should ONLY contain notes that are MISSING from the existing notes. Do NOT duplicate existing notes.
+- If no new notes are found for a contact, include them with an empty newNotes array.
+
+Return ONLY valid JSON. No markdown, no explanation, no wrapping.`;
+
+  return prompt;
+}

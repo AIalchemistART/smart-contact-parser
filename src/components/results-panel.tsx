@@ -13,6 +13,7 @@ import {
   Users,
   SearchCheck,
   Loader2,
+  NotebookPen,
 } from "lucide-react";
 
 interface ResultsPanelProps {
@@ -24,6 +25,9 @@ interface ResultsPanelProps {
   onFindMore?: () => void;
   canFindMore?: boolean;
   findingMore?: boolean;
+  onFindMissingNotes?: () => void;
+  canFindMissingNotes?: boolean;
+  findingMissingNotes?: boolean;
 }
 
 export function ResultsPanel({
@@ -35,6 +39,9 @@ export function ResultsPanel({
   onFindMore,
   canFindMore,
   findingMore,
+  onFindMissingNotes,
+  canFindMissingNotes,
+  findingMissingNotes,
 }: ResultsPanelProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -110,6 +117,29 @@ export function ResultsPanel({
             <>
               <SearchCheck className="mr-2 h-4 w-4" />
               Find More — Re-scan for missed contacts
+            </>
+          )}
+        </Button>
+      )}
+
+      {/* Find Missing Notes */}
+      {canFindMissingNotes && onFindMissingNotes && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full border-amber-500/30 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
+          onClick={onFindMissingNotes}
+          disabled={findingMissingNotes}
+        >
+          {findingMissingNotes ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Scanning for missing notes...
+            </>
+          ) : (
+            <>
+              <NotebookPen className="mr-2 h-4 w-4" />
+              Find Missing Notes — Enrich existing contacts
             </>
           )}
         </Button>

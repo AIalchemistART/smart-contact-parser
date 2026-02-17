@@ -1,5 +1,5 @@
 import { ParsedContact, EMPTY_CONTACT } from "./types";
-import { buildSystemPrompt } from "./prompt";
+import { buildSystemPrompt, buildNotesEnrichmentPrompt } from "./prompt";
 
 interface ParseOptions {
   text?: string;
@@ -197,6 +197,150 @@ export async function parseContactsClient(options: ParseOptions): Promise<ParseR
   return {
     contacts,
     modelUsed,
+    usage: {
+      promptTokens: usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0,
+      completionTokens: usageRaw?.output_tokens || usageRaw?.completion_tokens || 0,
+      totalTokens: usageRaw?.total_tokens || 0,
+    },
+  };
+}
+
+interface EnrichNotesOptions {
+  contacts: ParsedContact[];
+  originalText: string;
+  apiKey: string;
+}
+
+interface EnrichNotesResult {
+  updatedContacts: ParsedContact[];
+  newNotesCount: number;
+  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+}
+
+export async function enrichNotesClient(options: EnrichNotesOptions): Promise<EnrichNotesResult> {
+  const { contacts, originalText, apiKey } = options;
+
+  const enrichmentPrompt = buildNotesEnrichmentPrompt(
+    contacts.map((c) => ({
+      firstName: c.firstName,
+      lastName: c.lastName,
+      company: c.company,
+      notes: Array.isArray(c.notes) ? c.notes : [],
+    }))
+  );
+
+  let content: string | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let usageRaw: any = null;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-5.1-codex-mini",
+        instructions: enrichmentPrompt,
+        input: [{ role: "user", content: [{ type: "input_text", text: originalText }] }],
+        max_output_tokens: 40000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.warn("[enrichNotes] codex-mini failed:", response.status, errorBody?.slice(0, 200));
+      throw new Error(`codex-mini ${response.status}`);
+    }
+
+    const data = await response.json();
+    usageRaw = data.usage;
+
+    if (data.status === "completed" && data.output_text) {
+      content = data.output_text;
+    } else {
+      throw new Error("incomplete_response");
+    }
+  } catch (primaryErr) {
+    console.log("[enrichNotes] Falling back to gpt-4o:", primaryErr instanceof Error ? primaryErr.message : "unknown");
+
+    const fallbackRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: enrichmentPrompt },
+          { role: "user", content: originalText },
+        ],
+        max_tokens: 16000,
+        temperature: 0.2,
+      }),
+    });
+
+    if (!fallbackRes.ok) {
+      const errorBody = await fallbackRes.text();
+      let errorMsg = `OpenAI API error ${fallbackRes.status}`;
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorMsg = parsed.error?.message || errorMsg;
+      } catch {
+        if (errorBody) errorMsg += `: ${errorBody.slice(0, 200)}`;
+      }
+      throw new Error(errorMsg);
+    }
+
+    const fallbackData = await fallbackRes.json();
+    content = fallbackData.choices?.[0]?.message?.content || null;
+    usageRaw = fallbackData.usage;
+  }
+
+  if (!content) {
+    throw new Error("AI returned an empty response. Please try again.");
+  }
+
+  const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error("AI returned invalid JSON for notes enrichment. Please try again.");
+  }
+
+  const enrichedNotes: { contactIndex: number; newNotes: { content: string; date: string }[] }[] =
+    Array.isArray(parsed.enrichedNotes) ? parsed.enrichedNotes : [];
+
+  let newNotesCount = 0;
+  const updatedContacts = contacts.map((contact, i) => {
+    const enrichment = enrichedNotes.find((e) => e.contactIndex === i);
+    if (!enrichment || !Array.isArray(enrichment.newNotes) || enrichment.newNotes.length === 0) {
+      return contact;
+    }
+
+    const existingNoteTexts = new Set(
+      (contact.notes || []).map((n) => n.content.toLowerCase().trim())
+    );
+
+    const trulyNew = enrichment.newNotes.filter(
+      (n) => n.content && !existingNoteTexts.has(n.content.toLowerCase().trim())
+    );
+
+    if (trulyNew.length === 0) return contact;
+
+    newNotesCount += trulyNew.length;
+    return {
+      ...contact,
+      notes: [...(contact.notes || []), ...trulyNew],
+    };
+  });
+
+  return {
+    updatedContacts,
+    newNotesCount,
     usage: {
       promptTokens: usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0,
       completionTokens: usageRaw?.output_tokens || usageRaw?.completion_tokens || 0,

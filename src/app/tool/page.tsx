@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { ParsedContact, Preference } from "@/lib/types";
 import { getApiKey } from "@/lib/storage";
-import { parseContactsClient } from "@/lib/parse-client";
+import { parseContactsClient, enrichNotesClient } from "@/lib/parse-client";
 import { ParseInput } from "@/components/parse-input";
 import { ResultsPanel } from "@/components/results-panel";
 import { SettingsPanel } from "@/components/settings-panel";
@@ -23,6 +23,7 @@ export default function ToolPage() {
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [parsing, setParsing] = useState(false);
   const [rescanning, setRescanning] = useState(false);
+  const [enrichingNotes, setEnrichingNotes] = useState(false);
   const [error, setError] = useState("");
   const [totalTokens, setTotalTokens] = useState(0);
   const lastInputRef = useRef<LastInput | null>(null);
@@ -108,6 +109,35 @@ export default function ToolPage() {
     }
   };
 
+  const handleFindMissingNotes = async () => {
+    const apiKey = getApiKey();
+    const input = lastInputRef.current;
+    if (!apiKey || !input || contacts.length === 0) return;
+
+    setEnrichingNotes(true);
+    setError("");
+
+    try {
+      const result = await enrichNotesClient({
+        contacts,
+        originalText: input.text || "",
+        apiKey,
+      });
+
+      if (result.newNotesCount > 0) {
+        setContacts(result.updatedContacts);
+        setTotalTokens((prev) => prev + (result.usage?.totalTokens || 0));
+        setError(`Found ${result.newNotesCount} new note${result.newNotesCount !== 1 ? "s" : ""} across contacts.`);
+      } else {
+        setError("No missing notes found. Notes appear to be complete.");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Notes enrichment failed");
+    } finally {
+      setEnrichingNotes(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top bar */}
@@ -173,6 +203,9 @@ export default function ToolPage() {
               onFindMore={handleFindMore}
               canFindMore={!!lastInputRef.current && contacts.length > 0}
               findingMore={rescanning}
+              onFindMissingNotes={handleFindMissingNotes}
+              canFindMissingNotes={!!lastInputRef.current && contacts.length > 0}
+              findingMissingNotes={enrichingNotes}
             />
           </div>
         </div>
