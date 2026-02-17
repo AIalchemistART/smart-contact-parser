@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Smart Contact Parser - Donate</title>
+    <meta name="description" content="Support Smart Contact Parser development. Free, open-source, AI-powered contact extraction sustained by community donations.">
+    <link rel="stylesheet" href="css/welcome-modal.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --violet: #8b5cf6;
+            --violet-dark: #7c3aed;
+            --indigo: #6366f1;
+            --purple: #a78bfa;
+            --fuchsia: #d946ef;
+            --slate-900: #0a0a1a;
+            --slate-850: #0f0f24;
+            --slate-800: #1a1a32;
+            --slate-700: #2a2a44;
+            --slate-600: #3a3a55;
+            --slate-400: #8a8bb0;
+            --slate-300: #b0b1cf;
+            --slate-200: #d4d5e8;
+            --amber: #f59e0b;
+            --rose: #f43f5e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--slate-900);
+            color: var(--slate-200);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 10, 26, 0.92);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 40px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--violet) 0%, var(--indigo) 50%, var(--fuchsia) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--violet), var(--indigo));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--slate-400);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--violet);
+        }
+
+        .nav-donate {
+            background: linear-gradient(135deg, var(--rose), var(--amber)) !important;
+            color: white !important;
+            padding: 0.6rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+
+        /* Main */
+        main {
+            padding-top: 100px;
+            padding-bottom: 4rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Hero */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .hero-section h1 span {
+            background: linear-gradient(135deg, var(--violet), var(--indigo), var(--fuchsia));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-section p {
+            font-size: 1.2rem;
+            color: var(--slate-400);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* CTA Donate Card */
+        .cta-wrapper {
+            position: relative;
+            max-width: 700px;
+            margin: 0 auto 4rem;
+        }
+
+        .cta-glow {
+            position: absolute;
+            inset: -4px;
+            background: linear-gradient(135deg, var(--violet), var(--indigo), var(--fuchsia), var(--violet));
+            border-radius: 30px;
+            filter: blur(15px);
+            opacity: 0.5;
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.02); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .cta-card {
+            position: relative;
+            background: linear-gradient(135deg, rgba(26, 26, 50, 0.95), rgba(42, 42, 68, 0.9));
+            border: 2px solid var(--violet);
+            border-radius: 25px;
+            padding: 3rem;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .cta-card::before {
+            content: '✨';
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 1.5rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        .cta-card::after {
+            content: '💫';
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            font-size: 1.2rem;
+            animation: sparkle 2s ease-in-out infinite 0.5s;
+        }
+
+        .cta-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--rose), var(--amber));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            animation: float 3s ease-in-out infinite;
+            box-shadow: 0 10px 40px rgba(244, 63, 94, 0.3);
+        }
+
+        .cta-title {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, var(--violet), var(--indigo));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-subtitle {
+            font-size: 1.1rem;
+            color: var(--slate-200);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .cta-subtitle strong {
+            color: var(--violet);
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1.25rem 3rem;
+            background: linear-gradient(135deg, var(--rose), var(--amber));
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s;
+            box-shadow: 0 8px 30px rgba(244, 63, 94, 0.35);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(244, 63, 94, 0.5);
+        }
+
+        .cta-button svg {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.3s;
+        }
+
+        .cta-button:hover svg {
+            transform: translateX(5px);
+        }
+
+        .cta-footer {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--slate-400);
+        }
+
+        /* Reasons Grid */
+        .section-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--violet), var(--indigo));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-header p {
+            color: var(--slate-400);
+        }
+
+        .reasons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .reason-card {
+            background: rgba(26, 26, 50, 0.6);
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .reason-card:hover {
+            border-color: var(--violet);
+            transform: translateY(-5px);
+        }
+
+        .reason-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .reason-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--slate-200);
+        }
+
+        .reason-card p {
+            color: var(--slate-400);
+            font-size: 0.9rem;
+        }
+
+        /* Support Box */
+        .support-box {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(217, 70, 239, 0.06));
+            border: 2px solid var(--indigo);
+            border-radius: 25px;
+            padding: 2.5rem;
+            margin-bottom: 4rem;
+        }
+
+        .support-box h3 {
+            color: var(--indigo);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .support-list {
+            list-style: none;
+        }
+
+        .support-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            color: var(--slate-200);
+        }
+
+        .support-list li::before {
+            content: '✓';
+            color: var(--violet);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .support-list strong {
+            color: var(--violet);
+        }
+
+        /* Value Box */
+        .value-box {
+            background: rgba(139, 92, 246, 0.06);
+            border: 2px solid var(--violet);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .value-box h3 {
+            color: var(--violet);
+            margin-bottom: 1rem;
+        }
+
+        .value-box p {
+            color: var(--slate-400);
+            line-height: 1.8;
+        }
+
+        .value-box strong {
+            color: var(--indigo);
+        }
+
+        .value-box em {
+            color: var(--violet);
+            font-style: normal;
+            font-weight: 600;
+        }
+
+        /* Quote */
+        .quote-section {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .quote-section p {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: var(--slate-200);
+            margin-bottom: 0.5rem;
+        }
+
+        .quote-section span {
+            color: var(--slate-400);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 3rem 2rem;
+            border-top: 1px solid rgba(139, 92, 246, 0.15);
+            text-align: center;
+        }
+
+        footer h3 {
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, var(--violet), var(--indigo));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        footer p {
+            color: var(--slate-600);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--slate-600);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--violet);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero-section h1 {
+                font-size: 2rem;
+            }
+
+            .cta-card {
+                padding: 2rem;
+            }
+
+            .cta-title {
+                font-size: 1.5rem;
+            }
+
+            .cta-button {
+                padding: 1rem 2rem;
+                font-size: 1rem;
+            }
+
+            .reasons-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">
+            <div class="logo-icon">🔍</div>
+            <span class="logo-text">Smart Contact Parser</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html#features">Features</a></li>
+            <li><a href="index.html#philosophy">Philosophy</a></li>
+            <li><a href="donate.html" class="nav-donate">❤️ Donate</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <div class="container">
+            <div class="hero-section">
+                <h1>Support <span>Open Source AI</span></h1>
+                <p>Smart Contact Parser is free forever. Your support keeps development going and helps professionals everywhere save hours of manual data entry.</p>
+            </div>
+
+            <!-- Donate CTA -->
+            <div class="cta-wrapper">
+                <div class="cta-glow"></div>
+                <div class="cta-card">
+                    <div class="cta-icon">❤️</div>
+                    <h2 class="cta-title">Support Smart Contact Parser</h2>
+                    <p class="cta-subtitle">
+                        If this tool saves you <strong>hours of manual contact entry</strong> and helps you
+                        <strong>keep your data private</strong>, consider donating <strong>$5-10</strong> to keep it free,
+                        open source, and actively maintained.
+                    </p>
+                    <a href="https://ai-alchemist.netlify.app/donate" target="_blank" rel="noopener noreferrer" class="cta-button">
+                        <span>Support Development</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </a>
+                    <p class="cta-footer">💜 Community-sustained, built with ❤️ by AI Alchemist</p>
+                </div>
+            </div>
+
+            <!-- Why Support -->
+            <div class="section-header">
+                <h2>Why Support Smart Contact Parser?</h2>
+                <p>Your contribution makes a real difference</p>
+            </div>
+
+            <div class="reasons-grid">
+                <div class="reason-card">
+                    <div class="reason-icon">🔓</div>
+                    <h3>Always Free</h3>
+                    <p>No subscriptions, no feature gates, no upsells. Every feature is available to everyone, forever.</p>
+                </div>
+                <div class="reason-card">
+                    <div class="reason-icon">🔒</div>
+                    <h3>Privacy First</h3>
+                    <p>BYOK architecture means your API key and contact data never touch our servers. Zero data collection.</p>
+                </div>
+                <div class="reason-card">
+                    <div class="reason-icon">🌍</div>
+                    <h3>Open Source</h3>
+                    <p>MIT licensed. Fully transparent. Use it, audit it, modify it, share it. Built in the open.</p>
+                </div>
+                <div class="reason-card">
+                    <div class="reason-icon">🚀</div>
+                    <h3>Active Development</h3>
+                    <p>New AI models, better parsing, more export formats. Your donations directly fund development.</p>
+                </div>
+            </div>
+
+            <!-- What Support Covers -->
+            <div class="support-box">
+                <h3>What Your Donation Supports</h3>
+                <ul class="support-list">
+                    <li><strong>Active development</strong> — New features, AI model integrations, and parsing improvements</li>
+                    <li><strong>Export format support</strong> — GoHighLevel, Salesforce, HubSpot, and more CRM formats</li>
+                    <li><strong>Vision capabilities</strong> — Better business card and handwriting recognition</li>
+                    <li><strong>Documentation & guides</strong> — Tutorials, workflow guides, and batch processing tips</li>
+                    <li><strong>Security updates</strong> — Keeping dependencies patched and the app secure</li>
+                    <li><strong>Open-source ecosystem</strong> — Contributing back to the tools we depend on</li>
+                </ul>
+            </div>
+
+            <!-- Value Box -->
+            <div class="value-box">
+                <h3>The Value Exchange</h3>
+                <p>
+                    Manual contact entry takes <strong>2-5 minutes per contact</strong>.
+                    A 500-page document with hundreds of contacts? That's <strong>days of work</strong>.
+                    Smart Contact Parser does it in minutes — and it's <em>completely free</em>.
+                    <br><br>
+                    Commercial AI parsing tools charge <strong>$50-200/month</strong>.
+                    If this tool saves you time and money, consider giving back what feels right.
+                    Even <strong>$5 makes a difference</strong>.
+                </p>
+            </div>
+
+            <!-- Quote -->
+            <div class="quote-section">
+                <p>"Your data belongs to you. Your AI key belongs to you. Your contacts belong to you."</p>
+                <span>— The Smart Contact Parser Team</span>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <h3>🔍 Smart Contact Parser</h3>
+        <p>&copy; 2026 Smart Contact Parser by AI Alchemist. MIT License.</p>
+        <p style="font-style:italic;margin-top:1rem">"Your data. Your API key. Your control."</p>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="donate.html">Donate</a>
+            <a href="https://github.com/AIalchemistART" target="_blank">GitHub</a>
+            <a href="https://www.aialchemist.net" target="_blank">AI Alchemist</a>
+        </div>
+    </footer>
+
+    <script src="js/welcome-modal.js"></script>
+</body>
+</html>
