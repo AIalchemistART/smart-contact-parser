@@ -114,8 +114,8 @@ export default function Home() {
             />
             <Feature
               icon={Layers}
-              title="Batch Mode"
-              desc="Processing a 1,900-page Word doc? Paste 10 pages at a time, accumulate results, export once."
+              title="File Batch Processing"
+              desc="Drop a .txt file and walk away. The tool auto-chunks it, processes every section with AI, and accumulates all contacts — no copy-pasting required."
             />
             <Feature
               icon={Settings2}
@@ -211,8 +211,8 @@ export default function Home() {
             />
             <WorkflowStep
               num={3}
-              title="Run the full document"
-              desc="Once rules are set, batch-process the entire document. Paste 10-20 pages per batch for best results."
+              title="Drop the full document"
+              desc='Once rules are set, switch to the File Batch tab, drop your .txt file, and click Start. The tool auto-chunks the entire document and processes it unattended.'
             />
             <WorkflowStep
               num={4}

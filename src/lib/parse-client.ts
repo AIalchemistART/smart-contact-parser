@@ -194,13 +194,15 @@ export async function parseContactsClient(options: ParseOptions): Promise<ParseR
     detectedSource: typeof c.detectedSource === "string" ? c.detectedSource : "",
   }));
 
+  const promptTokens = usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0;
+  const completionTokens = usageRaw?.output_tokens || usageRaw?.completion_tokens || 0;
   return {
     contacts,
     modelUsed,
     usage: {
-      promptTokens: usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0,
-      completionTokens: usageRaw?.output_tokens || usageRaw?.completion_tokens || 0,
-      totalTokens: usageRaw?.total_tokens || 0,
+      promptTokens,
+      completionTokens,
+      totalTokens: usageRaw?.total_tokens || promptTokens + completionTokens,
     },
   };
 }
@@ -338,13 +340,15 @@ export async function enrichNotesClient(options: EnrichNotesOptions): Promise<En
     };
   });
 
+  const enrichPromptTokens = usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0;
+  const enrichCompletionTokens = usageRaw?.output_tokens || usageRaw?.completion_tokens || 0;
   return {
     updatedContacts,
     newNotesCount,
     usage: {
-      promptTokens: usageRaw?.input_tokens || usageRaw?.prompt_tokens || 0,
-      completionTokens: usageRaw?.output_tokens || usageRaw?.completion_tokens || 0,
-      totalTokens: usageRaw?.total_tokens || 0,
+      promptTokens: enrichPromptTokens,
+      completionTokens: enrichCompletionTokens,
+      totalTokens: usageRaw?.total_tokens || enrichPromptTokens + enrichCompletionTokens,
     },
   };
 }
