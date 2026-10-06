@@ -111,4 +111,8 @@ npm start
 
 Version **0.1.0** in `package.json`. `"private": true` means this package is not published to npm.
 
-The landing page (`/`), parser (`/tool`), and donate page are implemented as described above. There is no test suite. The repository has no `LICENSE` file; the site footer and donate page say "MIT License." The UI is dark only (`<html class="dark">`).
+The landing page (`/`), parser (`/tool`), and donate page are implemented as described above. There is no test suite. The UI is dark only (`<html class="dark">`).
+
+## License
+
+[MIT](LICENSE). Copyright 2025–2026 Matthew Walker (AI Alchemist).
